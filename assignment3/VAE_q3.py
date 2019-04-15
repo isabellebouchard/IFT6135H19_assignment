@@ -126,13 +126,13 @@ def test(epoch):
     return test_loss
 
 
-parser = argparse.ArgumentParser(description='VAE MNIST Example')
+parser = argparse.ArgumentParser(description='VAE for SVHN dataset')
+parser.add_argument("--model_path", type=str,
+                    help="The path for the model checkpoint")
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 
@@ -153,26 +153,52 @@ if __name__ == "__main__":
 
     # VAE model (TODO: change hardcoded shapes)
     model = VAE(encoder=MLPEncoder(input_shape=(3, 32, 32)),
-                decoder=MLPDecoder(output_shape=(3, 32, 32))).to(device)
+                decoder=MLPDecoder(output_shape=(3, 32, 32)))
+
+    train_model = True
+    if args.model_path:
+        model.load_state_dict(torch.load(args.model_path))
+        train_model = False
+    model = model.to(device)
 
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     best_loss = float('inf')
     patience = 0
+
+
+    RANDOM_SAMPLE = True
+    PERTURBATED_SAMPLE = False
+    INTERPOLATED_SAMPLE = False
+    EPS = 0.01
+
     for epoch in range(1, args.epochs + 1):
-        train_loss = train(epoch)
+        if train_model:
+            train_loss = train(epoch)
+
         test_loss = test(epoch)
 
         with torch.no_grad():
-            sample = torch.randn(128, 3, model.decoder.latent_space_size).to(device)
-            sample = model.decode(sample).cpu()
+            # Random sample from z
+            if INTERPOLATED_SAMPLE:
+            if RANDOM_SAMPLE:
+                z = torch.randn(128, 3, model.decoder.latent_space_size)
+            # TODO!!! Small perturbation in each dimension
+            if PERTURBATE_SAMPLE:
+                z = torch.ones(128, 3, model.decoder.latent_space_size) * EPS
+            # TODO!!! Interpolation between two points in latent space
+            if INTERPOLATED_SAMPLE:
+                z = torch.ones(128, 3, model.decoder.latent_space_size)
+
+            z = z.to(device)
+            sample = model.decode(z).cpu()
             save_image(sample, 'results/sample_' + str(epoch) + '.png')
 
         if test_loss < best_loss:
             # save model
             model_to_save = model.module if hasattr(model, 'module') else model
-            torch.save(model_to_save.state_dict(), 'results/model.pklz')
+            torch.save(model_to_save.state_dict(), 'results/model.pt')
             best_loss = test_loss
             patience = 0
         elif patience <= 3:
@@ -181,4 +207,3 @@ if __name__ == "__main__":
         else:
             print('Early stopping after {} epochs'.format(epoch))
             break
-
