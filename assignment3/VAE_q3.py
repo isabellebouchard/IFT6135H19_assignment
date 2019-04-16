@@ -19,9 +19,9 @@ class ConvEncoder(nn.Module):
 
         self.conv1 = nn.Conv2d(input_shape[0], 32, kernel_size=3)
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv3 = nn.Conv2d(32, 64,kernel_size=3)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3)
         self.pool4 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv5 = nn.Conv2d(64, 256,kernel_size=5)
+        self.conv5 = nn.Conv2d(64, 256, kernel_size=5)
         self.fc61 = nn.Linear(input_shape[1] * input_shape[2], latent_space_size)
         self.fc62 = nn.Linear(input_shape[1] * input_shape[2], latent_space_size)
 
@@ -32,7 +32,7 @@ class ConvEncoder(nn.Module):
         h4 = self.pool4(h3)
         h5 = F.elu(self.conv5(h4))
         h5 = h5.view(h5.size(0), -1)
-        return self.fc61(h5),  self.fc62(h5)
+        return self.fc61(h5), self.fc62(h5)
 
 class ConvDecoder(nn.Module):
     def __init__(self, output_shape, latent_space_size=100):
@@ -44,10 +44,10 @@ class ConvDecoder(nn.Module):
         self.fc7 = nn.Linear(latent_space_size, 256)
         self.conv8 = nn.Conv2d(256, 64, kernel_size=5, padding=4)
         self.up9 = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.conv10 = nn.Conv2d(64, 32,kernel_size=1, padding=2)
+        self.conv10 = nn.Conv2d(64, 32, kernel_size=1, padding=2)
         self.up11 = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.conv12 = nn.Conv2d(32, 16,kernel_size=3,padding=2)
-        self.conv13 = nn.Conv2d(16, output_shape[0], kernel_size=3, padding=2)
+        self.conv12 = nn.Conv2d(32, 16, kernel_size=3,padding=4)
+        self.conv13 = nn.Conv2d(16, output_shape[0], kernel_size=3, padding=0)
 
     def forward(self, z):
         h6 = F.elu(self.fc7(z))
@@ -57,7 +57,8 @@ class ConvDecoder(nn.Module):
         h9 = F.elu(self.conv10(h8))
         h10 = self.up11(h9)
         h11 = F.elu(self.conv12(h10))
-        return F.sigmoid(self.conv13(h11))
+        out = F.sigmoid(self.conv13(h11))
+        return out
 
 
 class MLPEncoder(nn.Module):
@@ -123,14 +124,12 @@ class VAE(nn.Module):
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
     BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
-    #BCE = F.mse_loss(recon_x, x)
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
     # https://arxiv.org/abs/1312.6114
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
     return BCE + KLD
 
 
