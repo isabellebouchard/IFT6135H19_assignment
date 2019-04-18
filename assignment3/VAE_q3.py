@@ -19,11 +19,11 @@ class ConvEncoder(nn.Module):
 
         self.conv1 = nn.Conv2d(input_shape[0], 32, kernel_size=3)
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=5)
         self.pool4 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.conv5 = nn.Conv2d(64, 256, kernel_size=5)
-        self.fc61 = nn.Linear(input_shape[1] * input_shape[2], latent_space_size)
-        self.fc62 = nn.Linear(input_shape[1] * input_shape[2], latent_space_size)
+        self.fc61 = nn.Linear(256, latent_space_size)
+        self.fc62 = nn.Linear(256, latent_space_size)
 
     def forward(self, x):
         h1 = F.elu(self.conv1(x))
@@ -31,8 +31,8 @@ class ConvEncoder(nn.Module):
         h3 = F.elu(self.conv3(h2))
         h4 = self.pool4(h3)
         h5 = F.elu(self.conv5(h4))
-        h5 = h5.view(h5.size(0), -1)
-        return self.fc61(h5), self.fc62(h5)
+        h6 = h5.view(h5.size(0), -1)
+        return self.fc61(h6), self.fc62(h6)
 
 class ConvDecoder(nn.Module):
     def __init__(self, output_shape, latent_space_size=100):
@@ -44,10 +44,11 @@ class ConvDecoder(nn.Module):
         self.fc7 = nn.Linear(latent_space_size, 256)
         self.conv8 = nn.Conv2d(256, 64, kernel_size=5, padding=4)
         self.up9 = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.conv10 = nn.Conv2d(64, 32, kernel_size=1, padding=2)
-        self.up11 = nn.UpsamplingBilinear2d(scale_factor=2)
-        self.conv12 = nn.Conv2d(32, 16, kernel_size=3,padding=4)
-        self.conv13 = nn.Conv2d(16, output_shape[0], kernel_size=3, padding=0)
+        self.conv10 = nn.Conv2d(64, 32, kernel_size=3, padding=3)
+        self.conv11 = nn.Conv2d(32, 16, kernel_size=3, padding=3)
+        self.up12 = nn.UpsamplingBilinear2d(scale_factor=2)
+        self.conv13 = nn.Conv2d(16, 16, kernel_size=3, padding=0)
+        self.conv14 = nn.Conv2d(16, output_shape[0], kernel_size=3, padding=0)
 
     def forward(self, z):
         h6 = F.elu(self.fc7(z))
@@ -55,9 +56,10 @@ class ConvDecoder(nn.Module):
         h7 = F.elu(self.conv8(h6))
         h8 = self.up9(h7)
         h9 = F.elu(self.conv10(h8))
-        h10 = self.up11(h9)
-        h11 = F.elu(self.conv12(h10))
-        out = F.sigmoid(self.conv13(h11))
+        h10 = F.elu(self.conv11(h9))
+        h11 = self.up12(h10)
+        h12 = F.elu(self.conv13(h11))
+        out = F.sigmoid(self.conv14(h12))
         return out
 
 
@@ -176,8 +178,6 @@ def test(epoch):
 
 
 parser = argparse.ArgumentParser(description='VAE for SVHN dataset')
-parser.add_argument("--model_path", type=str,
-                    help="The path for the model checkpoint")
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=1000, metavar='N',
@@ -203,11 +203,6 @@ if __name__ == "__main__":
     # VAE model (TODO: change hardcoded shapes)
     model = VAE(encoder=ConvEncoder(input_shape=(3, 32, 32)),
                 decoder=ConvDecoder(output_shape=(3, 32, 32)))
-
-    train_model = True
-    if args.model_path:
-        model.load_state_dict(torch.load(args.model_path))
-        train_model = False
     model = model.to(device)
 
     # Optimizer
@@ -216,29 +211,12 @@ if __name__ == "__main__":
     best_loss = float('inf')
     patience = 0
 
-
-    RANDOM_SAMPLE = True
-    PERTURBATED_SAMPLE = False
-    INTERPOLATED_SAMPLE = False
-    EPS = 0.01
-
     for epoch in range(1, args.epochs + 1):
-        if train_model:
-            train_loss = train(epoch)
-
+        train_loss = train(epoch)
         test_loss = test(epoch)
 
         with torch.no_grad():
-            # Random sample from z
-            if RANDOM_SAMPLE:
-                z = torch.randn(128, model.decoder.latent_space_size)
-            # TODO!!! Small perturbation in each dimension
-            if PERTURBATED_SAMPLE:
-                z = torch.ones(128, 1, model.decoder.latent_space_size) * EPS
-            # TODO!!! Interpolation between two points in latent space
-            if INTERPOLATED_SAMPLE:
-                z = torch.ones(128, 1, model.decoder.latent_space_size)
-
+            z = torch.randn(128, model.decoder.latent_space_size)
             z = z.to(device)
             sample = model.decode(z).cpu()
             save_image(sample, 'results/sample_' + str(epoch) + '.png')
