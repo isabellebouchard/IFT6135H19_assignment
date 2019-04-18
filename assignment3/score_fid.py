@@ -82,9 +82,10 @@ def calculate_fid_score(sample_feature_iterator,
     mu_q, sigma_q = get_statistics(q)
 
     p = np.asarray([s for s in testset_feature_iterator])
-    mu_q, sigma_q = get_statistics(p)
+    mu_p, sigma_p = get_statistics(p)
 
-    return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p + sigmaq - 2 * np.dot(sigma_p, sigma_q))
+    import pdb; pdb.set_trace()
+    return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p) + np.trace(sigma_q) - 2 * np.sqrt(np.trace(np.dot(sigma_p, sigma_q)))
 
 
 if __name__ == "__main__":
