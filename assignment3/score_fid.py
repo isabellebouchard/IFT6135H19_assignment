@@ -1,5 +1,6 @@
 import argparse
 import os
+import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 import torch
@@ -69,16 +70,21 @@ def extract_features(classifier, data_loader):
             for i in range(h.shape[0]):
                 yield h[i]
 
+def get_statistics(feature):
+    mu = np.mean(feature, axis=0)
+    sigma = np.cov(feature, rowvar=False)
+    return mu, sigma
 
 def calculate_fid_score(sample_feature_iterator,
                         testset_feature_iterator):
-    """
-    To be implemented by you!
-    """
-    raise NotImplementedError(
-        "TO BE IMPLEMENTED."
-        "Part of Assignment 3 Quantitative Evaluations"
-    )
+
+    q = np.asarray([s for s in sample_feature_iterator])
+    mu_q, sigma_q = get_statistics(q)
+
+    p = np.asarray([s for s in testset_feature_iterator])
+    mu_q, sigma_q = get_statistics(p)
+
+    return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p + sigmaq - 2 * np.dot(sigma_p, sigma_q))
 
 
 if __name__ == "__main__":
