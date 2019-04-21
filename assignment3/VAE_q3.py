@@ -51,15 +51,15 @@ class ConvDecoder(nn.Module):
         self.conv14 = nn.Conv2d(16, output_shape[0], kernel_size=3, padding=0)
 
     def forward(self, z):
-        h6 = F.elu(self.fc7(z))
+        h6 = F.leaky_relu(self.fc7(z))
         h6 = h6.view(h6.size(0), h6.size(1), 1, 1)
-        h7 = F.elu(self.conv8(h6))
+        h7 = F.leaky_relu(self.conv8(h6))
         h8 = self.up9(h7)
-        h9 = F.elu(self.conv10(h8))
-        h10 = F.elu(self.conv11(h9))
+        h9 = F.leaky_relu(self.conv10(h8))
+        h10 = F.leaky_relu(self.conv11(h9))
         h11 = self.up12(h10)
-        h12 = F.elu(self.conv13(h11))
-        out = F.sigmoid(self.conv14(h12))
+        h12 = F.leaky_relu(self.conv13(h11))
+        out = F.tanh(self.conv14(h12))
         return out
 
 
@@ -142,6 +142,7 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
+        recon_batch = recon_batch.mul(0.5).add(0.5)
         loss = loss_function(recon_batch, data, mu, logvar)
         loss.backward()
         train_loss += loss.item()
@@ -164,13 +165,14 @@ def test(epoch):
         for i, (data, _) in enumerate(test_loader):
             data = data.to(device)
             recon_batch, mu, logvar = model(data)
+            recon_batch = recon_batch.mul(0.5).add(0.5)
             test_loss += loss_function(recon_batch, data, mu, logvar).item()
             if i == 0:
                 n = min(data.size(0), 8)
                 comparison = torch.cat([data[:n],
                                       recon_batch[:n]])
                 save_image(comparison.cpu(),
-                           'results/reconstruction_{}.png'.format(epoch), nrow=n)
+                           'results/vae/reconstruction/reconstruction_{}.png'.format(epoch), nrow=n)
 
     test_loss /= len(test_loader.dataset)
     print('====> Test set loss: {:.4f}'.format(test_loss))
@@ -219,12 +221,13 @@ if __name__ == "__main__":
             z = torch.randn(128, model.decoder.latent_space_size)
             z = z.to(device)
             sample = model.decode(z).cpu()
-            save_image(sample, 'results/sample_' + str(epoch) + '.png')
+            sample = sample.mul(0.5).add(0.5)
+            save_image(sample, 'results/vae/samples/sample_' + str(epoch) + '.png')
 
         if test_loss < best_loss:
             # save model
             model_to_save = model.module if hasattr(model, 'module') else model
-            torch.save(model_to_save.state_dict(), 'results/model.pt')
+            torch.save(model_to_save.state_dict(), 'results/vae/model/vae_model.pt')
             best_loss = test_loss
             patience = 0
         elif patience <= 3:
