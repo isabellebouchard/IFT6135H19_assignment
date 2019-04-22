@@ -83,8 +83,6 @@ def calculate_fid_score(sample_feature_iterator,
     return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p) + np.trace(sigma_q) - \
            2 * np.trace(scipy.linalg.sqrtm(np.dot(sigma_p, sigma_q)))
 
-    #return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p) + np.trace(sigma_q) - 2 * np.sqrt(np.trace(np.dot(sigma_p, sigma_q)))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
