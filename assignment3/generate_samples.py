@@ -6,7 +6,7 @@ import torch
 from torchvision.utils import save_image
 import tqdm
 from VAE_q3 import ConvEncoder, ConvDecoder, VAE, loss_function
-from GAN_q3 import Discriminator, GAN
+from GAN_q3 import Discriminator, Generator, GAN
 
 
 
@@ -32,7 +32,8 @@ if __name__ == "__main__":
 
     # WGAN-GP model
     GAN_model = GAN(critic=Discriminator(input_shape=(3, 32, 32)),
-                    generator=ConvDecoder(output_shape=(3, 32, 32)))
+                    generator=Generator(output_shape=(3, 32, 32)))
+
     GAN_model.load_state_dict(torch.load(args.gan_model_path, map_location=lambda storage, loc: storage))
     GAN_model = GAN_model.to(device)
 
