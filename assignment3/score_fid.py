@@ -79,9 +79,25 @@ def calculate_fid_score(sample_feature_iterator,
     p = np.asarray([s for s in testset_feature_iterator])
     mu_p, sigma_p = get_statistics(p)
 
+
     # matrix square root (the square root is applied to the eigenvalues of the matrix)
+    covmean, _ = scipy.linalg.sqrtm(np.dot(sigma_p, sigma_q), disp=False)
+
+    # (from https://github.com/mseitzer/pytorch-fid/blob/4e366b2fc9fb933bec9f6f24c5e87c3bd9452eda/fid_score.py)
+    # Product might be almost singular
+    if not np.isfinite(covmean).all():
+        offset = np.eye(sigma_q.shape[0]) * eps
+        covmean = linalg.sqrtm(np.dot(sigma_q + offset, sigma_p + offset))
+
+    # Numerical error might give slight imaginary component
+    if np.iscomplexobj(covmean):
+        if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+            m = np.max(np.abs(covmean.imag))
+            raise ValueError('Imaginary component {}'.format(m))
+        covmean = covmean.real
+
     return np.dot(mu_p - mu_q, mu_p - mu_q) + np.trace(sigma_p) + np.trace(sigma_q) - \
-           2 * np.trace(scipy.linalg.sqrtm(np.dot(sigma_p, sigma_q)))
+           2 * np.trace(covmean)
 
 
 if __name__ == "__main__":
