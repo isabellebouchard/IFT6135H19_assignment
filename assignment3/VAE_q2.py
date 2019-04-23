@@ -233,9 +233,9 @@ if __name__ == "__main__":
     logtotal_val=[]
     logtotal_tes=[]
     train_model = False
-    
+    train_, valid_, test_ = get_data_loader("binarized_mnist", args.batch_size)
     if train_model==True:
-        train_, valid_, test_ = get_data_loader("binarized_mnist", args.batch_size)
+       
         model = model.to(device)
         for epoch in range(1, args.epochs + 1):
             loss = train(epoch)
@@ -254,15 +254,11 @@ if __name__ == "__main__":
             valid(epoch)
             test(epoch)
             for i, (data) in enumerate(valid_):
-                if (i==0):
                     data=data.to(device)
                     logpx,logpx_batch = importance_sampling(data, 200)
-                    print(logpx.shape)
-                    print(logpx_batch.shape)
                     logtotal_val = np.concatenate((logtotal_val,logpx_batch), axis=None)
             print(np.mean(logtotal_val))
             for i, (data) in enumerate(test_):
-                if (i==0):
                     data=data.to(device)
                     logpx,logpx_batch = importance_sampling(data, 200)
                     logtotal_tes=np.concatenate((logtotal_tes,logpx_batch), axis=None)
